@@ -1,0 +1,111 @@
+[
+  {
+    "id": "js-con-001",
+    "topic": "JavaScript",
+    "type": "concept",
+    "difficulty": "easy",
+    "question": "請解釋 JavaScript 中的 hoisting 是什麼？",
+    "hints": ["想想變數宣告和函數宣告的行為", "var 和 let/const 的差異"],
+    "keyPoints": [
+      "變數和函數宣告會被提升到其作用域的頂部",
+      "只有宣告被提升，賦值不會",
+      "let 和 const 也有 hoisting，但因存在暫時性死區 (TDZ)，在宣告前存取會拋出錯誤"
+    ],
+    "starterCode": null,
+    "testCases": null
+  },
+  {
+    "id": "js-pro-001",
+    "topic": "JavaScript",
+    "type": "code",
+    "difficulty": "medium",
+    "question": "實作一個 flatten 函數，將巢狀陣列攤平成一維陣列",
+    "starterCode": "function flatten(arr) {\n  // 例如：[1, [2, 3], [4, [5]]] => [1, 2, 3, 4, 5]\n}",
+    "hints": ["可以用遞迴", "檢查元素是否為陣列用 Array.isArray()"],
+    "testCases": [
+      {
+        "name": "基本攤平",
+        "setup": "const flatten = YOUR_CODE_HERE;",
+        "test": "console.log(JSON.stringify(flatten([1, [2, 3]])));",
+        "expected": "[1,2,3]"
+      },
+      {
+        "name": "深層巢狀",
+        "setup": "const flatten = YOUR_CODE_HERE;",
+        "test": "console.log(JSON.stringify(flatten([1, [2, [3, [4]]]])));",
+        "expected": "[1,2,3,4]"
+      },
+      {
+        "name": "空陣列",
+        "setup": "const flatten = YOUR_CODE_HERE;",
+        "test": "console.log(JSON.stringify(flatten([])));",
+        "expected": "[]"
+      }
+    ]
+  },
+  {
+    "id": "react-con-001",
+    "topic": "React",
+    "type": "concept",
+    "difficulty": "medium",
+    "question": "請解釋 React 中的 Class Component 和 Functional Component 之間的差異，以及 Hooks 的出現帶來了什麼改變？",
+    "hints": ["生命週期方法", "state 管理方式", "程式碼複用"],
+    "keyPoints": [
+      "Class Component 使用 'this' 和 'extends React.Component'",
+      "Functional Component 是純函式，過去被稱為無狀態元件",
+      "Hooks 讓 Functional Component 也能擁有 state 和生命週期等特性",
+      "Hooks (如 custom hooks) 改善了邏輯複用的問題，解決了 HOC/Render Props 的複雜性"
+    ],
+    "starterCode": null,
+    "testCases": null
+  },
+  {
+    "id": "js-pro-002",
+    "topic": "JavaScript",
+    "type": "code",
+    "difficulty": "hard",
+    "question": "實作一個 Promise.all() 的 polyfill，命名為 promiseAll",
+    "starterCode": "function promiseAll(promises) {\n  // promises 是一個 promise 物件的陣列\n}",
+    "hints": [
+      "回傳一個新的 Promise",
+      "需要一個計數器來追蹤已完成的 promise",
+      "注意處理空陣列的邊界情況",
+      "結果陣列的順序需要和傳入的 promises 陣列順序一致"
+    ],
+    "testCases": [
+      {
+        "name": "全部成功",
+        "setup": "const promiseAll = YOUR_CODE_HERE; const p1 = Promise.resolve(1); const p2 = 2; const p3 = new Promise((res) => setTimeout(() => res(3), 100));",
+        "test": "promiseAll([p1, p2, p3]).then(vals => console.log(JSON.stringify(vals)));",
+        "expected": "[1,2,3]"
+      },
+      {
+        "name": "其中一個失敗",
+        "setup": "const promiseAll = YOUR_CODE_HERE; const p1 = Promise.resolve(1); const p2 = Promise.reject('error');",
+        "test": "promiseAll([p1, p2]).catch(err => console.log(err));",
+        "expected": "error"
+      },
+      {
+        "name": "傳入空陣列",
+        "setup": "const promiseAll = YOUR_CODE_HERE;",
+        "test": "promiseAll([]).then(vals => console.log(JSON.stringify(vals)));",
+        "expected": "[]"
+      }
+    ]
+  },
+  {
+    "id": "css-con-001",
+    "topic": "CSS",
+    "type": "concept",
+    "difficulty": "easy",
+    "question": "請解釋 CSS Box Model (盒子模型) 是什麼，以及 `box-sizing: border-box;` 的作用？",
+    "hints": ["content, padding, border, margin", "width 和 height 的計算方式"],
+    "keyPoints": [
+      "標準盒子模型的 width/height 只包含 content",
+      "border-box 的 width/height 包含 content, padding, 和 border",
+      "`box-sizing` 改變了寬高計算的行為，讓排版更直觀"
+    ],
+    "starterCode": null,
+    "testCases": null
+  }
+]

@@ -1,11 +1,30 @@
 'use client'; // 重要！告訴 Next.js 這是客戶端元件, 這樣才能使用 client-side 的 hooks
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Question } from './types/question';
+
 export default function Home() {
   const [answer, setAnswer] = useState('');
   const [feedback, setFeedback] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const question = '請解釋 JavaScript 中的 hoisting 是什麼？';
+  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
+  const [isFetchingQuestion, setIsFetchingQuestion] = useState(false);
+
+  useEffect(() => {
+    const fetchQuestion = async () => {
+      try {
+        setIsFetchingQuestion(true);
+        const response = await fetch('/api/questions');
+        const data = await response.json();
+        setCurrentQuestion(data);
+      } catch (error) {
+        console.error('無法抓取題目:', error);
+      } finally {
+        setIsFetchingQuestion(false);
+      }
+    };
+    fetchQuestion();
+  }, []);
 
   const handleSubmit = async () => {
     if (!answer) return;
@@ -16,7 +35,7 @@ export default function Home() {
       const response = await fetch('/api/gemini', {
         method: 'POST',
         body: JSON.stringify({
-          question,
+          question: currentQuestion?.question,
           answer,
         }),
       });
@@ -39,8 +58,18 @@ export default function Home() {
         <div className="max-w-2xl mx-auto">
           {/* 題目區 */}
           <div className="bg-gray-800 rounded-lg p-6 mb-6">
-            <div className="text-sm text-blue-400 mb-2">題目 #1</div>
-            <p className="text-lg">{question}</p>
+            {isFetchingQuestion ? (
+              <p className="text-center text-gray-400">正在從題庫抽取題目...</p>
+            ) : (
+              currentQuestion && (
+                <>
+                  <div className="text-sm text-blue-400 mb-2">
+                    {currentQuestion.topic} 題目
+                  </div>
+                  <p className="text-lg">{currentQuestion.question}</p>
+                </>
+              )
+            )}
           </div>
 
           {/* 作答區 */}
