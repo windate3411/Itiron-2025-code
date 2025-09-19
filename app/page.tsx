@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Question } from './types/question';
+import Editor from '@monaco-editor/react'; // 引入 Editor 元件
 
 export default function Home() {
   const [answer, setAnswer] = useState('');
@@ -17,6 +18,12 @@ export default function Home() {
         const response = await fetch('/api/questions');
         const data = await response.json();
         setCurrentQuestion(data);
+        // 如果是程式題，設定初始程式碼
+        if (data.type === 'code' && data.starterCode) {
+          setAnswer(data.starterCode);
+        } else {
+          setAnswer('');
+        }
       } catch (error) {
         console.error('無法抓取題目:', error);
       } finally {
@@ -48,6 +55,36 @@ export default function Home() {
       setIsLoading(false);
     }
   };
+
+  const renderAnswerArea = () => {
+    if (!currentQuestion) return null;
+
+    if (currentQuestion.type === 'code') {
+      return (
+        <Editor
+          height="40vh"
+          language="javascript"
+          theme="vs-dark"
+          value={answer}
+          onChange={(value) => setAnswer(value || '')}
+          options={{
+            fontSize: 16,
+          }}
+        />
+      );
+    } else {
+      return (
+        <textarea
+          value={answer}
+          onChange={(e) => setAnswer(e.target.value)}
+          className="w-full h-32 bg-gray-700 rounded p-3 text-white"
+          placeholder="在這裡輸入你的答案..."
+          disabled={isLoading}
+        />
+      );
+    }
+  };
+
   return (
     <main className="min-h-screen bg-gray-900 text-white">
       <div className="container mx-auto px-4 py-16">
@@ -74,13 +111,7 @@ export default function Home() {
 
           {/* 作答區 */}
           <div className="bg-gray-800 rounded-lg p-6 mb-6">
-            <textarea
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              className="w-full h-32 bg-gray-700 rounded p-3 text-white"
-              placeholder="在這裡輸入你的答案..."
-              disabled={isLoading}
-            />
+            {renderAnswerArea()}
           </div>
 
           {/* 按鈕 */}
