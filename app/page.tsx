@@ -44,6 +44,7 @@ export default function Home() {
         body: JSON.stringify({
           question: currentQuestion?.question,
           answer,
+          keyPoints: currentQuestion?.keyPoints,
         }),
       });
       const data = await response.json();
