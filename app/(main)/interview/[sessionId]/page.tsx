@@ -52,25 +52,29 @@ export default function InterviewPage() {
       { role: 'user', content: answer },
     ];
     setChatHistory(newHistory);
-    const currentAnswer = answer;
     setAnswer('');
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/chat', {
+      const response = await fetch('/api/interview/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          question: currentQuestion.question,
-          answer: currentAnswer,
-          keyPoints: currentQuestion.keyPoints,
+          questionId: currentQuestion.id,
+          answer: answer,
+          userId: 'anonymous-user',
         }),
       });
 
       if (!response.ok) throw new Error('API request failed');
 
       const data = await response.json();
-      const aiResponse: ChatMessage = { role: 'ai', content: data.result };
+      console.log('Structured AI Feedback:', data);
+      const aiResponse: ChatMessage = {
+        role: 'ai',
+        content: data.summary,
+        evaluation: data,
+      };
       setChatHistory([...newHistory, aiResponse]);
     } catch (error) {
       console.error('錯誤:', error);
