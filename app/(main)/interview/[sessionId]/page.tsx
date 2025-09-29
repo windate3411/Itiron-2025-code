@@ -47,12 +47,18 @@ export default function InterviewPage() {
   const handleSubmit = async () => {
     if (!answer || !currentQuestion) return;
 
-    const newHistory: ChatMessage[] = [
-      ...chatHistory,
-      { role: 'user', content: answer },
-    ];
-    setChatHistory(newHistory);
-    setAnswer('');
+    // 1. 立刻更新 UI，包含使用者的回答和一個 AI 的空回應框
+    const userMessage: ChatMessage = { role: 'user', content: answer };
+    const aiPlaceholderMessage: ChatMessage = { role: 'ai', content: '' };
+
+    // 更新 chatHistory，讓 UI 即時反應
+    setChatHistory((prevHistory) => [
+      ...prevHistory,
+      userMessage,
+      aiPlaceholderMessage,
+    ]);
+
+    setAnswer(''); // 清空輸入框
     setIsLoading(true);
 
     try {
@@ -66,23 +72,67 @@ export default function InterviewPage() {
         }),
       });
 
-      if (!response.ok) throw new Error('API request failed');
+      if (!response.ok) {
+        throw new Error(`API request failed with status ${response.status}`);
+      }
+      if (!response.body) {
+        throw new Error('Response body is null');
+      }
 
-      const data = await response.json();
-      console.log('Structured AI Feedback:', data);
-      const aiResponse: ChatMessage = {
-        role: 'ai',
-        content: data.summary,
-        evaluation: data,
-      };
-      setChatHistory([...newHistory, aiResponse]);
+      // --- 串流處理邏輯 ---
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let accumulatedResponse = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          // 串流結束，最後一次更新，並解析完整的 JSON
+          try {
+            const finalJson = JSON.parse(accumulatedResponse);
+            // 使用 finalJson 中的 summary 作為最終顯示的 content
+            setChatHistory((prevHistory) => {
+              const newHistory = [...prevHistory];
+              newHistory[newHistory.length - 1] = {
+                role: 'ai',
+                content: finalJson.summary || accumulatedResponse, // 降級使用原始文字
+                evaluation: finalJson,
+              };
+              return newHistory;
+            });
+          } catch (e: unknown) {
+            console.error('無法解析最終的 JSON 字串:', accumulatedResponse);
+            if (e instanceof Error) {
+              console.error('錯誤訊息:', e.message);
+            }
+            // 如果解析失敗，至少保留原始文字流
+            setChatHistory((prevHistory) => {
+              const newHistory = [...prevHistory];
+              newHistory[newHistory.length - 1].content =
+                accumulatedResponse + '\n\n[AI 回應格式錯誤]';
+              return newHistory;
+            });
+          }
+          break;
+        }
+
+        // 持續解碼並更新最後一條 AI 訊息的 content
+        accumulatedResponse += decoder.decode(value, { stream: true });
+        setChatHistory((prevHistory) => {
+          const newHistory = [...prevHistory];
+          newHistory[newHistory.length - 1].content = accumulatedResponse;
+          return newHistory;
+        });
+      }
     } catch (error) {
       console.error('錯誤:', error);
-      const errorResponse: ChatMessage = {
-        role: 'ai',
-        content: '抱歉，我現在無法提供回饋，請稍後再試。',
-      };
-      setChatHistory([...newHistory, errorResponse]);
+      // 更新最後一條 AI 訊息為錯誤提示
+      setChatHistory((prevHistory) => {
+        const newHistory = [...prevHistory];
+        newHistory[newHistory.length - 1].content =
+          '抱歉，我現在無法提供回饋，請稍後再試。';
+        return newHistory;
+      });
     } finally {
       setIsLoading(false);
     }

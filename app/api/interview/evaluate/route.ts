@@ -109,7 +109,7 @@ export async function POST(request: Request) {
 
       const ragContext =
         !ragError && ragData?.length > 0
-          ? ragData.map((d: any) => `- ${d.content}`).join('\n')
+          ? ragData.map((d: { content: string }) => `- ${d.content}`).join('\n')
           : 'No relevant context found.';
 
       finalPrompt = conceptPromptTemplate.replace(
@@ -153,7 +153,7 @@ export async function POST(request: Request) {
 
     const contents: Content[] = [{ parts: [{ text: finalPrompt }] }];
 
-    const result = await genAI.models.generateContent({
+    const result = await genAI.models.generateContentStream({
       model: 'gemini-2.5-flash',
       contents: contents,
       config: {
@@ -161,18 +161,22 @@ export async function POST(request: Request) {
       },
     });
 
-    const responseText = result.text;
-    const jsonResponse = JSON.parse(responseText || '{}');
-
-    try {
-      return NextResponse.json(jsonResponse);
-    } catch (e) {
-      console.error('Gemini did not return valid JSON:', responseText);
-      return NextResponse.json(
-        { error: 'AI response is not valid JSON' },
-        { status: 500 }
-      );
-    }
+    const stream = new ReadableStream({
+      async start(controller) {
+        const encoder = new TextEncoder();
+        for await (const chunk of result) {
+          // 確保我們只傳遞有內容的文字部分
+          const text = chunk.text;
+          if (text) {
+            controller.enqueue(encoder.encode(text));
+          }
+        }
+        controller.close();
+      },
+    });
+    return new Response(stream, {
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    });
   } catch (error) {
     console.error('Error in evaluation API:', error);
     if (error instanceof Error) {

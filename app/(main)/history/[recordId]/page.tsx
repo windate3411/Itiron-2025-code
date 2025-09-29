@@ -16,6 +16,7 @@ export default function RecordDetailPage({
 }) {
   // 實際上，你會用 params.recordId 去 fetch 資料
   const detail = mockPracticeDetail;
+  console.log('params', params);
 
   return (
     <div className="p-8 max-w-5xl mx-auto">
