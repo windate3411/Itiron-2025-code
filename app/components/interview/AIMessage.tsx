@@ -1,5 +1,5 @@
 import { Bot, Star, ThumbsUp, ThumbsDown } from 'lucide-react';
-
+import { useState, useEffect } from 'react'; // 引入 React Hooks
 interface Evaluation {
   score: number;
   summary: string;
@@ -7,25 +7,56 @@ interface Evaluation {
   cons: string[];
 }
 
-interface AiMessageProps {
+interface AIMessageProps {
   message: {
     content?: string;
     evaluation?: Evaluation;
   };
 }
 
-export default function AiMessage({ message }: AiMessageProps) {
+const TYPING_SPEED = 20; // 每個字元的延遲 (ms)，可以調整以獲得最佳體感
+
+export default function AIMessage({ message }: AIMessageProps) {
+  const [displayedContent, setDisplayedContent] = useState('');
+
+  useEffect(() => {
+    const targetContent = message.content || '';
+
+    // 建立一個計時器
+    const intervalId = setInterval(() => {
+      setDisplayedContent((prev) => {
+        if (prev.length === targetContent.length) {
+          // 如果長度已經相等，表示動畫完成，清除計時器
+          clearInterval(intervalId);
+          return prev; // 返回原值，不觸發更新
+        }
+        // 返回 "當前內容" + "目標內容中的下一個字元"
+        return targetContent.substring(0, prev.length + 1);
+      });
+    }, TYPING_SPEED);
+
+    // 清理函式保持不變
+    return () => clearInterval(intervalId);
+  }, [message.content]);
+
+  // 當 message.content 被清空或不存在時，同步重置 displayedContent
+  useEffect(() => {
+    if (!message.content) {
+      setDisplayedContent('');
+    }
+  }, [message.content]);
   return (
     <div className="flex items-start gap-4">
       <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center border border-blue-400">
         <Bot size={20} />
       </div>
       <div className="flex-1">
-        {message.content && (
+        {/* 【關鍵】將 message.content 改為使用 displayedContent state */}
+        {displayedContent && (
           <div
             className="bg-gray-700/80 rounded-lg p-3 text-gray-200"
             dangerouslySetInnerHTML={{
-              __html: message.content.replace(
+              __html: displayedContent.replace(
                 /\*\*(.*?)\*\*/g,
                 '<strong>$1</strong>'
               ),

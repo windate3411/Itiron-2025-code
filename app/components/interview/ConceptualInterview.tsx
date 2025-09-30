@@ -1,6 +1,6 @@
 import AIMessage from './AIMessage';
 import UserMessage from './UserMessage';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, X } from 'lucide-react';
 import { ChatMessage } from '@/app/types/interview';
 interface ConceptualInterviewProps {
   chatHistory: ChatMessage[];
@@ -9,6 +9,7 @@ interface ConceptualInterviewProps {
   onInputChange: (value: string) => void;
   onSubmit: () => void;
   isLoading: boolean;
+  onCancel: () => void; // 新增取消按鈕
 }
 
 export default function ConceptualInterview({
@@ -18,6 +19,7 @@ export default function ConceptualInterview({
   onInputChange,
   onSubmit,
   isLoading,
+  onCancel,
 }: ConceptualInterviewProps) {
   return (
     <div className="flex flex-col h-full p-4">
@@ -50,13 +52,22 @@ export default function ConceptualInterview({
                 }
               }}
             />
-            <button
-              onClick={onSubmit}
-              disabled={isLoading}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 hover:text-blue-300 disabled:text-gray-500"
-            >
-              <ChevronRight size={24} />
-            </button>
+            {isLoading ? (
+              <button
+                onClick={onCancel}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 hover:text-blue-300 disabled:text-gray-500"
+              >
+                <X size={24} />
+              </button>
+            ) : (
+              <button
+                onClick={onSubmit}
+                disabled={isLoading}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 hover:text-blue-300 disabled:text-gray-500"
+              >
+                <ChevronRight size={24} />
+              </button>
+            )}
           </div>
         </footer>
       </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { Question } from '@/app/types/question';
 import CodingInterview from '@/app/components/interview/CodingInterview';
@@ -15,6 +15,7 @@ export default function InterviewPage() {
   const [answer, setAnswer] = useState('');
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const fetchQuestion = async () => {
@@ -62,6 +63,7 @@ export default function InterviewPage() {
     setIsLoading(true);
 
     try {
+      abortControllerRef.current = new AbortController();
       const response = await fetch('/api/interview/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -70,6 +72,7 @@ export default function InterviewPage() {
           answer: answer,
           userId: 'anonymous-user',
         }),
+        signal: abortControllerRef.current?.signal,
       });
 
       if (!response.ok) {
@@ -101,6 +104,7 @@ export default function InterviewPage() {
               return newHistory;
             });
           } catch (e: unknown) {
+            // 移除這裡的 AbortError 處理，因為 AbortError 會在最外層被捕獲
             console.error('無法解析最終的 JSON 字串:', accumulatedResponse);
             if (e instanceof Error) {
               console.error('錯誤訊息:', e.message);
@@ -112,7 +116,11 @@ export default function InterviewPage() {
                 accumulatedResponse + '\n\n[AI 回應格式錯誤]';
               return newHistory;
             });
+          } finally {
+            setIsLoading(false);
+            abortControllerRef.current = null;
           }
+
           break;
         }
 
@@ -125,17 +133,34 @@ export default function InterviewPage() {
         });
       }
     } catch (error) {
-      console.error('錯誤:', error);
-      // 更新最後一條 AI 訊息為錯誤提示
-      setChatHistory((prevHistory) => {
-        const newHistory = [...prevHistory];
-        newHistory[newHistory.length - 1].content =
-          '抱歉，我現在無法提供回饋，請稍後再試。';
-        return newHistory;
-      });
+      // 檢查是否為手動取消
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('Fetch request was aborted by the user.');
+        setChatHistory((prevHistory) => {
+          const newHistory = [...prevHistory];
+          newHistory[newHistory.length - 1].content = '[已手動取消]';
+          return newHistory;
+        });
+      } else {
+        // 更新最後一條 AI 訊息為錯誤提示
+        setChatHistory((prevHistory) => {
+          const newHistory = [...prevHistory];
+          newHistory[newHistory.length - 1].content =
+            '抱歉，我現在無法提供回饋，請稍後再試。';
+          return newHistory;
+        });
+      }
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
     }
+  };
+
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort(); // 移除自定義訊息，讓它拋出標準的 AbortError
+    }
+    setIsLoading(false);
   };
 
   if (isFetchingQuestion) {
@@ -174,6 +199,7 @@ export default function InterviewPage() {
           onInputChange={setAnswer}
           onSubmit={handleSubmit}
           isLoading={isLoading}
+          onCancel={handleCancel}
         />
       )}
     </div>
