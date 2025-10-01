@@ -1,3 +1,5 @@
+'use client';
+
 import { Bot, Star, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { useState, useEffect } from 'react'; // 引入 React Hooks
 interface Evaluation {

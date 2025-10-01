@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenAI, Content } from '@google/genai';
 import questions from '@/data/questions.json';
-
+import { ChatMessage } from '@/app/types/interview';
 // --- 初始化客戶端 ---
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -12,60 +12,67 @@ const supabase = createClient(
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
-// --- Prompt 模板 ---
-const conceptPromptTemplate = `<role>
-You are a senior frontend technical interviewer evaluating a candidate's answer to a conceptual question.
+function formatChatHistory(history: ChatMessage[]): string {
+  if (!history || history.length === 0) {
+    return '無歷史對話紀錄。';
+  }
+  // 只取最近的 4 則訊息 (約 2 輪對話)，避免 Prompt 過長
+  const recentHistory = history.slice(-4);
+  return recentHistory
+    .map((msg) => {
+      const prefix = msg.role === 'user' ? 'User' : 'AI';
+      // 我們只關心對話內容，忽略 evaluation 物件
+      return `${prefix}: ${msg.content}`;
+    })
+    .join('\n');
+}
+
+const unifiedPromptTemplate = `<role>
+You are a world-class senior frontend technical interviewer providing a comprehensive evaluation.
 </role>
 <task>
-Evaluate the <candidate_answer> based on whether it covers the concepts in <rag_context>.
-Your response MUST be a single, valid JSON object that adheres to the provided schema. In this conceptual evaluation, the "grounded_evidence" field MUST be null.
-Answer in Traditional Chinese in a must.
+Carefully analyze the user's answer based on the provided context. Your evaluation must be grounded in the evidence given.
+
+- **If the question is conceptual (i.e., <judge0_result> contains 'not applicable for this question')**:
+  - Base your evaluation on how well the <user_answer> aligns with the key points in <rag_context>.
+  - The \`grounded_evidence\` field in your JSON response MUST be \`null\`.
+
+- **If the question is a coding challenge (i.e., <rag_context> contains 'not applicable for this question')**:
+  - Base your evaluation strictly on the objective <judge0_result> and an analysis of the <user_answer> (which is user's code).
+  - The \`grounded_evidence\` field in your JSON response MUST be populated with data from the execution results.
+
+Always refer to the <conversation_history> for dialogue context.
+Your response MUST be a single, valid JSON object following the schema. Answer in Traditional Chinese.
 </task>
 <json_schema>
 {
   "summary": "string",
   "score": "number (1-5)",
-  "grounded_evidence": null,
+  "grounded_evidence": { "tests_passed": "number|null", "tests_failed": "number|null", "stderr_excerpt": "string|null" } | null,
   "pros": ["string"],
   "cons": ["string"],
   "next_practice": ["string"]
 }
 </json_schema>
+<conversation_history>
+\${formattedHistory}
+</conversation_history>
+<question>
+\${question}
+</question>
 <rag_context>
 \${ragContext}
 </rag_context>
-<candidate_answer>
-\${userAnswer}
-</candidate_answer>`;
-
-const codePromptTemplate = `<role>
-You are a world-class senior frontend technical interviewer providing a comprehensive code review based strictly on the execution result and the code itself.
-</role>
-<task>
-Evaluate the <user_code> based on the objective <judge0_result>. Analyze the code for quality, correctness, and best practices.
-Your response MUST be a single, valid JSON object that adheres to the provided schema.
-Answer in Traditional Chinese in a must.
-</task>
-<json_schema>
-{
-  "summary": "string",
-  "score": "number (1-5)",
-  "grounded_evidence": { "tests_passed": "number", "tests_failed": "number", "stderr_excerpt": "string|null" },
-  "pros": ["string"],
-  "cons": ["string"],
-  "next_practice": ["string"]
-}
-</json_schema>
 <judge0_result>
 \${judge0Result}
 </judge0_result>
-<user_code>
-\${userCode}
-</user_code>`;
+<user_answer>
+\${userAnswer}
+</user_answer>`;
 
 export async function POST(request: Request) {
   try {
-    const { questionId, answer } = await request.json();
+    const { questionId, answer, history } = await request.json();
 
     const question = questions.find((q) => q.id === questionId);
     if (!question) {
@@ -75,7 +82,10 @@ export async function POST(request: Request) {
       );
     }
 
-    let finalPrompt = '';
+    // 準備所有需要的上下文變數
+    const formattedHistory = formatChatHistory(history);
+    let ragContext = 'not applicable for this question';
+    let judge0ResultText = 'not applicable for this question';
 
     if (question.type === 'concept') {
       // --- 概念題路徑 (RAG) ---
@@ -103,22 +113,14 @@ export async function POST(request: Request) {
           query_embedding: JSON.stringify(answerEmbedding),
           match_threshold: 0.7,
           match_count: 5,
-          question_id: questionId,
+          p_question_id: questionId,
         }
       );
 
-      const ragContext =
+      ragContext =
         !ragError && ragData?.length > 0
           ? ragData.map((d: { content: string }) => `- ${d.content}`).join('\n')
           : 'No relevant context found.';
-
-      finalPrompt = conceptPromptTemplate.replace(
-        /\${ragContext}/g,
-        ragContext
-      );
-      finalPrompt = finalPrompt.replace(/\${userAnswer}/g, answer);
-
-      console.log('finalPrompt', finalPrompt);
     } else if (question.type === 'code') {
       const judge0Response = await fetch(
         `${process.env.NEXT_PUBLIC_APP_URL}/api/judge0/execute`,
@@ -130,19 +132,18 @@ export async function POST(request: Request) {
       );
 
       const judge0Result = await judge0Response.json();
-      const judge0ResultText = `Status: ${
-        judge0Result.status.description
-      }\nStdout: ${judge0Result.stdout || 'N/A'}\nStderr: ${
-        judge0Result.stderr || 'N/A'
-      }`;
-
-      finalPrompt = codePromptTemplate.replace(
-        /\${judge0Result}/g,
-        judge0ResultText
-      );
-
-      finalPrompt = finalPrompt.replace(/\${userCode}/g, answer);
+      judge0ResultText = `Status: ${judge0Result.status.description}\nStdout: ${
+        judge0Result.stdout || 'N/A'
+      }\nStderr: ${judge0Result.stderr || 'N/A'}`;
     }
+
+    // 填充統一的 Prompt 模板
+    const finalPrompt = unifiedPromptTemplate
+      .replace(/\${formattedHistory}/g, formattedHistory)
+      .replace(/\${question}/g, question.question)
+      .replace(/\${ragContext}/g, ragContext)
+      .replace(/\${judge0Result}/g, judge0ResultText)
+      .replace(/\${userAnswer}/g, answer);
 
     if (!finalPrompt) {
       return NextResponse.json(

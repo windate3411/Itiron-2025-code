@@ -71,6 +71,7 @@ export default function InterviewPage() {
           questionId: currentQuestion.id,
           answer: answer,
           userId: 'anonymous-user',
+          history: chatHistory, // 新增歷史對話紀錄
         }),
         signal: abortControllerRef.current?.signal,
       });
