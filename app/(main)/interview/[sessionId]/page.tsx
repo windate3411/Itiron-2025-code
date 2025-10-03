@@ -21,7 +21,31 @@ export default function InterviewPage() {
     const fetchQuestion = async () => {
       try {
         setIsFetchingQuestion(true);
-        const response = await fetch('/api/questions');
+        
+        // 解析 sessionId：格式為 {topic}-{type}
+        const sessionParts = sessionId.split('-');
+        let apiUrl = '/api/questions';
+        
+        if (sessionParts.length === 2) {
+          const [topic, type] = sessionParts;
+          
+          // 映射 topic 到題庫中實際存在的 topic
+          const topicMapping: Record<string, string> = {
+            'javascript': 'JavaScript',
+            'react': 'React', 
+            'css': 'CSS',
+            'typescript': 'JavaScript', // TypeScript 題目歸類到 JavaScript
+          };
+          
+          const actualTopic = topicMapping[topic] || topic;
+          
+          const params = new URLSearchParams();
+          params.append('topic', actualTopic);
+          params.append('type', type);
+          apiUrl = `/api/questions?${params.toString()}`;
+        }
+          
+        const response = await fetch(apiUrl);
         const data: Question = await response.json();
         setCurrentQuestion(data);
 
@@ -127,9 +151,22 @@ export default function InterviewPage() {
 
         // 持續解碼並更新最後一條 AI 訊息的 content
         accumulatedResponse += decoder.decode(value, { stream: true });
+        
+        // 嘗試解析部分 JSON 來提取 summary，如果失敗就顯示載入訊息
+        let displayContent = '正在分析中...';
+        try {
+          const partialJson = JSON.parse(accumulatedResponse);
+          if (partialJson.summary) {
+            displayContent = partialJson.summary;
+          }
+        } catch {
+          // JSON 還未完整，繼續顯示載入訊息
+          displayContent = '正在分析中...';
+        }
+        
         setChatHistory((prevHistory) => {
           const newHistory = [...prevHistory];
-          newHistory[newHistory.length - 1].content = accumulatedResponse;
+          newHistory[newHistory.length - 1].content = displayContent;
           return newHistory;
         });
       }

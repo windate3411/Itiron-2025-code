@@ -14,7 +14,7 @@ const mockTopicProgress = [
 
 const mockConceptualTopics = [
   {
-    id: 'js-core',
+    id: 'javascript-concept',
     title: 'JavaScript 核心觀念',
     description: '深入探討 Hoisting, Closure, Prototype 等基礎。',
     progress: 75,
@@ -23,7 +23,7 @@ const mockConceptualTopics = [
     ringColor: 'ring-yellow-500',
   },
   {
-    id: 'react-core',
+    id: 'react-concept',
     title: 'React 基礎與 Hooks',
     description: '從元件生命週期到 state 與 effect 的掌握。',
     progress: 85,
@@ -32,7 +32,7 @@ const mockConceptualTopics = [
     ringColor: 'ring-blue-500',
   },
   {
-    id: 'ts-basics',
+    id: 'typescript-concept',
     title: 'TypeScript 基礎',
     description: '理解型別、泛型與 Interface 的應用。',
     progress: 60,
@@ -41,7 +41,7 @@ const mockConceptualTopics = [
     ringColor: 'ring-cyan-500',
   },
   {
-    id: 'network',
+    id: 'javascript-concept',
     title: '網路請求與非同步',
     description: '關於 Fetch, Promise 與 async/await 的一切。',
     progress: 55,
@@ -53,7 +53,7 @@ const mockConceptualTopics = [
 
 const mockCodingTopics = [
   {
-    id: 'css-layout',
+    id: 'css-code',
     title: 'CSS 版面挑戰',
     description: '使用 Flexbox 與 Grid 打造複雜響應式版面。',
     progress: 70,
@@ -62,7 +62,7 @@ const mockCodingTopics = [
     ringColor: 'ring-pink-500',
   },
   {
-    id: 'react-hooks-impl',
+    id: 'javascript-code',
     title: '實作 React Hooks',
     description: '從零開始打造 useDebounce, useToggle 等工具。',
     progress: 85,
@@ -71,7 +71,7 @@ const mockCodingTopics = [
     ringColor: 'ring-blue-500',
   },
   {
-    id: 'algo-easy',
+    id: 'javascript-code',
     title: '演算法入門',
     description: '常見的字串與陣列操作題目。',
     progress: 65,
