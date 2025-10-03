@@ -12,6 +12,27 @@ const supabase = createClient(
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
+async function retryAsyncFunction<T>(
+  asyncFn: () => Promise<T>,
+  retries = 3,
+  delay = 1000,
+  onRetry?: (error: Error, attempt: number) => void
+): Promise<T> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await asyncFn();
+    } catch (error) {
+      if (onRetry) {
+        onRetry(error as Error, i + 1);
+      }
+      if (i === retries - 1) throw error;
+      await new Promise((res) => setTimeout(res, delay * Math.pow(2, i)));
+    }
+  }
+  // 迴圈結束後還是失敗，拋出錯誤 (理論上不會執行到這裡，但為求型別安全)
+  throw new Error('Retry failed after multiple attempts.');
+}
+
 function formatChatHistory(history: ChatMessage[]): string {
   if (!history || history.length === 0) {
     return '無歷史對話紀錄。';
@@ -107,14 +128,14 @@ export async function POST(request: Request) {
       }
       const answerEmbedding = embeddingResponse.embeddings[0].values;
 
-      const { data: ragData, error: ragError } = await supabase.rpc(
-        'match_documents',
-        {
-          query_embedding: JSON.stringify(answerEmbedding),
-          match_threshold: 0.7,
-          match_count: 5,
-          p_question_id: questionId,
-        }
+      const { data: ragData, error: ragError } = await retryAsyncFunction(
+        async () =>
+          supabase.rpc('match_documents', {
+            query_embedding: JSON.stringify(answerEmbedding),
+            match_threshold: 0.7,
+            match_count: 5,
+            p_question_id: questionId,
+          })
       );
 
       ragContext =
@@ -122,13 +143,17 @@ export async function POST(request: Request) {
           ? ragData.map((d: { content: string }) => `- ${d.content}`).join('\n')
           : 'No relevant context found.';
     } else if (question.type === 'code') {
-      const judge0Response = await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL}/api/judge0/execute`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ source_code: answer }),
-        }
+      const judge0Response = await retryAsyncFunction(async () =>
+        fetch(
+          `${
+            process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+          }/api/judge0/execute`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source_code: answer }),
+          }
+        )
       );
 
       const judge0Result = await judge0Response.json();
