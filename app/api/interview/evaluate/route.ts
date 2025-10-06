@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import questions from '@/data/questions.json';
 import { formatChatHistory } from '@/app/lib/utils';
 import { buildUnifiedPrompt } from '@/app/lib/prompt';
-import { performRagSearch } from '@/app/lib/supabase';
+import { performRagSearch } from '@/app/lib/supabase/server';
 import { generateEmbedding, generateContentStream } from '@/app/lib/gemini';
 import { getFormattedJudge0Result } from '@/app/lib/judge0';
 
