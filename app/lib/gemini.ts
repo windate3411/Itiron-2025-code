@@ -36,10 +36,12 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 /**
  * 使用 Gemini 生成串流回應
  * @param prompt 完整的 prompt 文字
+ * @param onComplete 串流結束後的回呼函式，用於處理完整的 JSON 回應
  * @returns ReadableStream 用於串流回應
  */
 export async function generateContentStream(
-  prompt: string
+  prompt: string,
+  onComplete?: (json: string) => void
 ): Promise<ReadableStream> {
   const contents: Content[] = [{ parts: [{ text: prompt }] }];
 
@@ -54,10 +56,22 @@ export async function generateContentStream(
   return new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder();
+      let accumulatedJson = '';
       for await (const chunk of result) {
         const text = chunk.text;
         if (text) {
           controller.enqueue(encoder.encode(text));
+          accumulatedJson += text;
+        }
+      }
+
+      // 【核心修改】串流結束後，檢查並執行 onComplete 回呼
+      if (onComplete) {
+        try {
+          onComplete(accumulatedJson);
+        } catch (e) {
+          // 在伺服器端紀錄回呼函式執行時的錯誤
+          console.error('Error executing onComplete callback:', e);
         }
       }
       controller.close();

@@ -16,35 +16,36 @@ export default function InterviewPage() {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const [isEvaluated, setIsEvaluated] = useState(false); // <-- 新增狀態
 
   useEffect(() => {
     const fetchQuestion = async () => {
       try {
         setIsFetchingQuestion(true);
-        
+
         // 解析 sessionId：格式為 {topic}-{type}
         const sessionParts = sessionId.split('-');
         let apiUrl = '/api/questions';
-        
+
         if (sessionParts.length === 2) {
           const [topic, type] = sessionParts;
-          
+
           // 映射 topic 到題庫中實際存在的 topic
           const topicMapping: Record<string, string> = {
-            'javascript': 'JavaScript',
-            'react': 'React', 
-            'css': 'CSS',
-            'typescript': 'JavaScript', // TypeScript 題目歸類到 JavaScript
+            javascript: 'JavaScript',
+            react: 'React',
+            css: 'CSS',
+            typescript: 'JavaScript', // TypeScript 題目歸類到 JavaScript
           };
-          
+
           const actualTopic = topicMapping[topic] || topic;
-          
+
           const params = new URLSearchParams();
           params.append('topic', actualTopic);
           params.append('type', type);
           apiUrl = `/api/questions?${params.toString()}`;
         }
-          
+
         const response = await fetch(apiUrl);
         const data: Question = await response.json();
         setCurrentQuestion(data);
@@ -96,6 +97,7 @@ export default function InterviewPage() {
           answer: answer,
           userId: 'anonymous-user',
           history: chatHistory, // 新增歷史對話紀錄
+          isFollowUp: isEvaluated,
         }),
         signal: abortControllerRef.current?.signal,
       });
@@ -118,13 +120,14 @@ export default function InterviewPage() {
           // 串流結束，最後一次更新，並解析完整的 JSON
           try {
             const finalJson = JSON.parse(accumulatedResponse);
+            setIsEvaluated(true);
             // 使用 finalJson 中的 summary 作為最終顯示的 content
             setChatHistory((prevHistory) => {
               const newHistory = [...prevHistory];
               newHistory[newHistory.length - 1] = {
                 role: 'ai',
                 content: finalJson.summary || accumulatedResponse, // 降級使用原始文字
-                evaluation: finalJson,
+                evaluation: isEvaluated ? null : finalJson,
               };
               return newHistory;
             });
@@ -151,7 +154,7 @@ export default function InterviewPage() {
 
         // 持續解碼並更新最後一條 AI 訊息的 content
         accumulatedResponse += decoder.decode(value, { stream: true });
-        
+
         // 嘗試解析部分 JSON 來提取 summary，如果失敗就顯示載入訊息
         let displayContent = '正在分析中...';
         try {
@@ -163,7 +166,7 @@ export default function InterviewPage() {
           // JSON 還未完整，繼續顯示載入訊息
           displayContent = '正在分析中...';
         }
-        
+
         setChatHistory((prevHistory) => {
           const newHistory = [...prevHistory];
           newHistory[newHistory.length - 1].content = displayContent;
