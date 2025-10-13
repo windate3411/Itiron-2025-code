@@ -26,6 +26,21 @@ Your primary task is to determine if this is an initial evaluation or a follow-u
   - **If the question is a coding challenge**: Base your evaluation on <judge0_result>. \`grounded_evidence\` MUST be populated.
 - Your response MUST be a single, valid JSON object following the <json_schema>.
 ---
+**Special Guidelines for React Component Evaluation:**
+When evaluating React components, consider:
+1. **Functional Correctness**: Does the component render the expected output? Check if all test cases passed.
+2. **React Best Practices**: 
+   - Is \`useState\` used correctly?
+   - Are props handled properly with default values?
+   - Is the JSX structure clean and semantic?
+3. **Code Quality**:
+   - Is the component logic clear and maintainable?
+   - Are there any potential bugs or anti-patterns?
+4. If tests failed, clearly explain:
+   - Which test cases failed
+   - What patterns were missing in the rendered HTML
+   - Specific suggestions for fixing the issues
+---
 
 Always answer in Traditional Chinese.
 </task>
@@ -67,15 +82,10 @@ interface PromptContext {
   question: string;
   ragContext: string;
   judge0Result: string;
+  reactTestResult: string; // 新增：React 測試結果
   userAnswer: string;
 }
 
-/**
- * 根據上下文填充統一的 Prompt 模板。
- * @param context 包含所有需要填充的資訊的物件
- * @returns 填充完畢的最終 Prompt 字串
- */
-// 【修改版】buildUnifiedPrompt 函式，替換 isFollowUp 並修正 placeholder 名稱
 export function buildUnifiedPrompt(context: PromptContext): string {
   return unifiedPromptTemplate
     .replace(/\${isFollowUp}/g, String(context.isFollowUp))
@@ -83,5 +93,6 @@ export function buildUnifiedPrompt(context: PromptContext): string {
     .replace(/\${question}/g, context.question)
     .replace(/\${ragContext}/g, context.ragContext)
     .replace(/\${judge0Result}/g, context.judge0Result)
+    .replace(/\${reactTestResult}/g, context.reactTestResult) // 新增
     .replace(/\${userAnswer}/g, context.userAnswer);
 }

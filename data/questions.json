@@ -107,5 +107,41 @@
     ],
     "starterCode": null,
     "testCases": null
+  },
+  {
+    "id": "react-pro-001", // 由於是手動產生題目，暫時我們先用回我們之前設定的id結構，日後要像之前的文章做批量產生時可以繼續使用UUID的格式
+    "topic": "React",
+    "type": "code",
+    "difficulty": "easy",
+    "question": "請建立一個名為 `Counter` 的 React 元件。\n\n**需求：**\n- 接收一個 `initialCount` prop（預設值為 0）\n- 使用 `useState` 管理計數狀態\n- 顯示當前計數值\n- 包含「增加」和「減少」兩個按鈕\n\n**注意：** 我們只會驗證初始渲染的 HTML 結構，不會測試按鈕的實際點擊行為。",
+    "hints": [
+      "使用 `useState` hook 來管理計數器的狀態",
+      "記得為 `initialCount` prop 設定預設值",
+      "確保 JSX 中包含計數值的顯示元素和兩個按鈕"
+    ],
+    "keyPoints": [
+      "正確使用 useState hook 並傳入 initialCount 作為初始值",
+      "使用 JSX 語法建立 UI 結構",
+      "正確顯示當前計數值",
+      "包含文字為「增加」和「減少」的按鈕元素"
+    ],
+    "starterCode": "import React, { useState } from 'react';\n\nfunction Counter({ initialCount = 0 }) {\n  const [count, setCount] = useState(initialCount);\n  \n  return (\n    <div>\n      {/* TODO: 在此處實作你的 UI */}\n    </div>\n  );\n}\n\nexport default Counter;",
+    "testCases": [
+      {
+        "name": "預設初始值 (0)",
+        "props": {},
+        "expectedPatterns": ["<div", "0", "增加", "減少", "<button"]
+      },
+      {
+        "name": "初始值為 5",
+        "props": { "initialCount": 5 },
+        "expectedPatterns": ["5", "增加", "減少"]
+      },
+      {
+        "name": "初始值為負數 (-3)",
+        "props": { "initialCount": -3 },
+        "expectedPatterns": ["-3", "增加", "減少"]
+      }
+    ]
   }
 ]

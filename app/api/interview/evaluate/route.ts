@@ -1,6 +1,6 @@
 // app/api/interview/evaluate/route.ts
 import { NextResponse } from 'next/server';
-import questions from '@/data/questions.json';
+import questionsData from '@/data/questions.json';
 import { formatChatHistory } from '@/app/lib/utils';
 import { buildUnifiedPrompt } from '@/app/lib/prompt';
 import { performRagSearch } from '@/app/lib/supabase/server';
@@ -10,6 +10,97 @@ import {
   createAuthClient,
   supabase as adminSupabase,
 } from '@/app/lib/supabase/server';
+import {
+  evaluateReactComponent,
+  ReactTestCase,
+  TestCaseResult,
+} from '@/app/lib/react-executor';
+import { Question } from '@/app/types/question';
+
+const questions = questionsData as Question[];
+function formatReactEvaluationResults(
+  results: TestCaseResult[],
+  error?: string
+): string {
+  if (error) {
+    return `❌ 評測過程發生錯誤：${error}\n\n請檢查你的程式碼是否有語法錯誤或其他問題。`;
+  }
+
+  const passedCount = results.filter((r) => r.passed).length;
+  const totalCount = results.length;
+
+  let output = `## 測試結果總覽\n通過: ${passedCount}/${totalCount}\n\n`;
+
+  results.forEach((result, index) => {
+    output += `### 測試案例 ${index + 1}: ${result.name}\n`;
+
+    if (result.passed) {
+      output += `✅ **通過**\n`;
+      output += `渲染結果符合預期\n\n`;
+    } else {
+      output += `❌ **失敗**\n`;
+
+      if (result.missing && result.missing.length > 0) {
+        output += `缺少以下預期內容:\n`;
+        result.missing.forEach((pattern) => {
+          output += `  - "${pattern}"\n`;
+        });
+      }
+
+      output += `\n實際渲染的 HTML:\n\`\`\`html\n${result.actual}\n\`\`\`\n\n`;
+    }
+  });
+
+  return output;
+}
+
+/**
+ * 準備評估所需的上下文資料
+ */
+async function prepareEvaluationContext(
+  question: Question,
+  userAnswer: string
+) {
+  let judge0Result = 'not applicable for this question'; // 一般程式題結果
+  let reactTestResult = 'not applicable for this question'; // React 測試結果（新增）
+  let ragContext = 'not applicable for this question';
+
+  // ========================================
+  // React 程式題：使用我們的原生評測引擎
+  // ========================================
+  if (question.topic === 'React' && question.type === 'code') {
+    console.log('🎯 偵測到 React 程式題，使用原生評測引擎');
+
+    const testCases: ReactTestCase[] = question.testCases || [];
+
+    const evaluation = await evaluateReactComponent(userAnswer, testCases);
+
+    reactTestResult = formatReactEvaluationResults(
+      evaluation.results,
+      evaluation.error
+    );
+
+    console.log('✅ React 評測完成');
+  }
+  // ========================================
+  // 一般程式題：使用 Judge0
+  // ========================================
+  else if (question.type === 'code') {
+    console.log('📝 偵測到一般程式題，使用 Judge0');
+    judge0Result = await getFormattedJudge0Result(userAnswer);
+  }
+
+  // ========================================
+  // 概念題：使用 RAG
+  // ========================================
+  if (question.type === 'concept') {
+    console.log('💡 偵測到概念題，執行 RAG 搜尋');
+    const answerEmbedding = await generateEmbedding(userAnswer);
+    ragContext = await performRagSearch(answerEmbedding, question.id);
+  }
+
+  return { ragContext, judge0Result, reactTestResult }; // 回傳三個欄位
+}
 
 export async function POST(request: Request) {
   try {
@@ -35,16 +126,9 @@ export async function POST(request: Request) {
 
     // 準備所有需要的上下文變數
     const formattedHistory = formatChatHistory(history);
-    let ragContext = 'not applicable for this question';
-    let judge0ResultText = 'not applicable for this question';
 
-    if (question.type === 'concept') {
-      // --- 概念題路徑 (RAG) ---
-      const answerEmbedding = await generateEmbedding(answer);
-      ragContext = await performRagSearch(answerEmbedding, questionId);
-    } else if (question.type === 'code') {
-      judge0ResultText = await getFormattedJudge0Result(answer);
-    }
+    const { ragContext, judge0Result, reactTestResult } =
+      await prepareEvaluationContext(question, answer);
 
     // 填充統一的 Prompt 模板
     const finalPrompt = buildUnifiedPrompt({
@@ -52,8 +136,9 @@ export async function POST(request: Request) {
       formattedHistory,
       question: question.question,
       ragContext,
-      judge0Result: judge0ResultText,
+      judge0Result: judge0Result,
       userAnswer: answer,
+      reactTestResult: reactTestResult,
     });
 
     if (!finalPrompt) {
