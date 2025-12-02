@@ -41,7 +41,7 @@ const mockConceptualTopics = [
     ringColor: 'ring-cyan-500',
   },
   {
-    id: 'javascript-concept',
+    id: 'network-concept',
     title: '網路請求與非同步',
     description: '關於 Fetch, Promise 與 async/await 的一切。',
     progress: 55,
@@ -53,6 +53,15 @@ const mockConceptualTopics = [
 
 const mockCodingTopics = [
   {
+    id: 'javascript-code',
+    title: '演算法入門',
+    description: '常見的字串與陣列操作題目。',
+    progress: 65,
+    color: 'text-green-400',
+    bgColor: 'bg-green-900/20',
+    ringColor: 'ring-green-500',
+  },
+  {
     id: 'css-code',
     title: 'CSS 版面挑戰',
     description: '使用 Flexbox 與 Grid 打造複雜響應式版面。',
@@ -62,22 +71,13 @@ const mockCodingTopics = [
     ringColor: 'ring-pink-500',
   },
   {
-    id: 'javascript-code',
+    id: 'react-code',
     title: '實作 React Hooks',
     description: '從零開始打造 useDebounce, useToggle 等工具。',
     progress: 85,
     color: 'text-blue-400',
     bgColor: 'bg-blue-900/20',
     ringColor: 'ring-blue-500',
-  },
-  {
-    id: 'javascript-code',
-    title: '演算法入門',
-    description: '常見的字串與陣列操作題目。',
-    progress: 65,
-    color: 'text-green-400',
-    bgColor: 'bg-green-900/20',
-    ringColor: 'ring-green-500',
   },
 ];
 

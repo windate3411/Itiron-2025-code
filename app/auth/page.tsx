@@ -2,11 +2,12 @@
 import { login, signup } from '@/app/auth/action';
 import { Bot, Mail, Lock } from 'lucide-react';
 
-export default function AuthPage({
+export default async function AuthPage({
   searchParams,
 }: {
-  searchParams: { message: string };
+  searchParams: Promise<{ message: string }>;
 }) {
+  const params = await searchParams;
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 flex items-center justify-center p-4 font-sans">
       <div className="w-full max-w-md">
@@ -68,9 +69,9 @@ export default function AuthPage({
               </div>
             </div>
 
-            {searchParams?.message && (
+            {params?.message && (
               <p className="text-center text-sm text-green-400 p-2 bg-green-900/30 rounded-md">
-                {searchParams.message}
+                {params.message}
               </p>
             )}
 
