@@ -5,7 +5,7 @@ import questions from '@/data/questions.json';
 import AiMessage from '@/app/components/interview/AIMessage';
 import Link from 'next/link';
 import { ArrowLeft, BarChart2, CheckCircle, XCircle } from 'lucide-react';
-
+import { Evaluation } from '@/app/types/interview';
 type PageProps = {
   params: { recordId: string };
 };
@@ -35,7 +35,13 @@ export default async function RecordDetailPage({ params }: PageProps) {
   }
 
   const questionInfo = questions.find((q) => q.id === record.question_id);
-  const evaluation = record.evaluation as any; // 方便起見，暫時使用 any
+  const evaluation = record.evaluation as Evaluation & {
+    grounded_evidence: {
+      tests_passed: number;
+      tests_failed: number;
+      stderr_excerpt: string;
+    };
+  };
   const groundedEvidence = evaluation?.grounded_evidence;
   const formattedDate = new Date(record.created_at).toLocaleString('zh-TW', {
     year: 'numeric',
